@@ -17,7 +17,9 @@ type PetstoreServerImpl struct {
 }
 
 func New() *PetstoreServerImpl {
-	return &PetstoreServerImpl{}
+	return &PetstoreServerImpl{
+		pets: make([]generated.Pet, 0),
+	}
 }
 
 func (s *PetstoreServerImpl) Handler() http.Handler {
