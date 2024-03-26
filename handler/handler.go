@@ -2,7 +2,7 @@ package handler
 
 import (
 	"encoding/json"
-	"log"
+	"io"
 	"net/http"
 
 	"github.com/brendenehlers/oapi-gen-test/generated"
@@ -12,62 +12,68 @@ import (
 // and some helper functions to abstract the `generated` package from
 // `main.go`
 
-
 func (s *PetstoreServerImpl) Handler() http.Handler {
 	return generated.Handler(s)
 }
 
 func (s *PetstoreServerImpl) FindPets(w http.ResponseWriter, r *http.Request, params generated.FindPetsParams) {
-	log.Println("Testing FindPets")
-
 	pets, err := s.findPets(params)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	panicIfError(err)
 
-	if pets != nil {
-		json.NewEncoder(w).Encode(pets)
-	} else {
-		w.WriteHeader(http.StatusNotFound)
-	}
-}
-
-func (s *PetstoreServerImpl) AddPet(w http.ResponseWriter, r *http.Request) {
-	log.Println("Testing AddPet")
-
-	var newPet generated.NewPet
-	_ = json.NewDecoder(r.Body).Decode(&newPet)
-
-	err := s.addPet(newPet)
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-}
-
-func (s *PetstoreServerImpl) DeletePet(w http.ResponseWriter, r *http.Request, id int64) {
-	log.Printf("Testing DeletePet, id: %v\n", id)
-
-	err := s.deletePet(id)
-
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	panicIfError(sendResponse(w, pets))
 }
 
 func (s *PetstoreServerImpl) FindPetById(w http.ResponseWriter, r *http.Request, id int64) {
-	log.Printf("Testing FindPetById, id: %v", id)
-
 	pet, err := s.findPetById(id)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	panicIfError(err)
 
-	if pet != nil {
-		json.NewEncoder(w).Encode(pet)
-	} else {
-		w.WriteHeader(http.StatusNotFound)
+	panicIfError(sendResponse(w, pet))
+}
+
+func (s *PetstoreServerImpl) AddPet(w http.ResponseWriter, r *http.Request) {
+	newPet, err := readBody[generated.NewPet](r.Body)
+	panicIfError(err)
+
+	pet, err := s.addPet(newPet)
+	panicIfError(err)
+
+	panicIfError(sendResponseAsJSON(w, pet))
+}
+
+func (s *PetstoreServerImpl) DeletePet(w http.ResponseWriter, r *http.Request, id int64) {
+	err := s.deletePet(id)
+	panicIfError(err)
+}
+
+func panicIfError(err error) {
+	if err != nil {
+		panic(err)
 	}
+}
+
+func sendResponse(w http.ResponseWriter, data any) error {
+	if data != nil {
+		return sendResponseWithData(w, data)
+	} else {
+		return sendMissingDataResponse(w)
+	}
+}
+
+func sendResponseWithData(w http.ResponseWriter, data any) error {
+	return sendResponseAsJSON(w, data)
+}
+
+func sendMissingDataResponse(w http.ResponseWriter) error {
+	w.WriteHeader(http.StatusNotFound)
+	return nil
+}
+
+func sendResponseAsJSON(w http.ResponseWriter, body any) error {
+	return json.NewEncoder(w).Encode(body)
+}
+
+func readBody[T any](r io.Reader) (T, error) {
+	var val T
+	err := json.NewDecoder(r).Decode(&val)
+	return val, err
 }

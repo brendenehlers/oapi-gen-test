@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"slices"
 
 	"github.com/brendenehlers/oapi-gen-test/generated"
@@ -9,11 +10,17 @@ import (
 // Contains the concrete implementations for interacting with the data source
 
 type PetstoreServerImpl struct {
+	ctx context.Context
+	cancelFunc context.CancelFunc
 	pets []generated.Pet
 }
 
-func New() *PetstoreServerImpl {
+func New(ctx context.Context) *PetstoreServerImpl {
+	context, cancelFunc := context.WithCancel(ctx)
+
 	return &PetstoreServerImpl{
+		ctx: context,
+		cancelFunc: cancelFunc,
 		pets: make([]generated.Pet, 0),
 	}
 }
@@ -22,11 +29,11 @@ func (s *PetstoreServerImpl) findPets(_ generated.FindPetsParams) ([]generated.P
 	return s.pets, nil
 }
 
-func (s *PetstoreServerImpl) addPet(newPet generated.NewPet) error {
+func (s *PetstoreServerImpl) addPet(newPet generated.NewPet) ( *generated.Pet, error ) {
 	pet := petFromNewPet(newPet)
 
 	s.pets = append(s.pets, pet)
-	return nil
+	return &pet, nil
 }
 
 func (s *PetstoreServerImpl) deletePet(id int64) error {
