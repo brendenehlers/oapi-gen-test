@@ -12,15 +12,6 @@ import (
 // and some helper functions to abstract the `generated` package from
 // `main.go`
 
-type PetstoreServerImpl struct {
-	pets []generated.Pet
-}
-
-func New() *PetstoreServerImpl {
-	return &PetstoreServerImpl{
-		pets: make([]generated.Pet, 0),
-	}
-}
 
 func (s *PetstoreServerImpl) Handler() http.Handler {
 	return generated.Handler(s)

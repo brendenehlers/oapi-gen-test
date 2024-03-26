@@ -8,6 +8,15 @@ import (
 
 // Contains the concrete implementations for interacting with the data source
 
+type PetstoreServerImpl struct {
+	pets []generated.Pet
+}
+
+func New() *PetstoreServerImpl {
+	return &PetstoreServerImpl{
+		pets: make([]generated.Pet, 0),
+	}
+}
 
 func (s *PetstoreServerImpl) findPets(_ generated.FindPetsParams) ([]generated.Pet, error)  {
 	return s.pets, nil
