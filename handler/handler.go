@@ -22,19 +22,17 @@ type DataStore interface {
 
 type PetstoreServerImpl struct {
 	ctx context.Context
-	cancelFunc context.CancelFunc
+	cancel context.CancelFunc
 	ds DataStore
 }
 
-func New(ctx context.Context) *PetstoreServerImpl {
-	context, cancelFunc := context.WithCancel(ctx)
+func New(ctx context.Context, ds DataStore) *PetstoreServerImpl {
+	context, cancel := context.WithCancel(ctx)
 
 	return &PetstoreServerImpl{
 		ctx: context,
-		cancelFunc: cancelFunc,
-		ds: &DataStoreImpl{
-			pets: make([]generated.Pet, 0),
-		},
+		cancel: cancel,
+		ds: ds,
 	}
 }
 
@@ -69,6 +67,8 @@ func (s *PetstoreServerImpl) AddPet(w http.ResponseWriter, r *http.Request) {
 func (s *PetstoreServerImpl) DeletePet(w http.ResponseWriter, r *http.Request, id int64) {
 	err := s.ds.DeletePet(id)
 	panicIfError(err)
+
+	panicIfError(deletedResponse(w))
 }
 
 func panicIfError(err error) {
@@ -81,7 +81,7 @@ func sendResponse(w http.ResponseWriter, data any) error {
 	if data != nil {
 		return sendResponseWithData(w, data)
 	} else {
-		return sendMissingDataResponse(w)
+		return missingDataResponse(w)
 	}
 }
 
@@ -89,8 +89,13 @@ func sendResponseWithData(w http.ResponseWriter, data any) error {
 	return sendResponseAsJSON(w, data)
 }
 
-func sendMissingDataResponse(w http.ResponseWriter) error {
+func missingDataResponse(w http.ResponseWriter) error {
 	w.WriteHeader(http.StatusNotFound)
+	return nil
+}
+
+func deletedResponse(w http.ResponseWriter) error {
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
